@@ -103,6 +103,8 @@ void del_client_interface(uint32_t id, const uint8_t *client_addr, uint32_t reas
  */
 void del_client_all_interfaces(const uint8_t *client_addr, uint32_t reason, uint8_t deauth, uint32_t ban_time);
 
+void wnm_disassoc_imminent(uint32_t id, const uint8_t *client_addr, char* dest_ap, uint32_t duration);
+
 /**
  * Send probe message via the network.
  * @param probe_entry

@@ -28,7 +28,7 @@ void remove_old_client_entries(time_t current_time, long long int threshold);
 
 int eval_probe_metric(struct probe_entry_s probe_entry);
 
-int kick_client(struct client_s client_entry);
+int kick_client(struct client_s client_entry, char* neighbor_report);
 
 void ap_array_insert(ap entry);
 
@@ -322,7 +322,7 @@ int compare_station_count(uint8_t *bssid_addr_own, uint8_t *bssid_addr_to_compar
 }
 
 
-int better_ap_available(uint8_t bssid_addr[], uint8_t client_addr[], int automatic_kick) {
+int better_ap_available(uint8_t bssid_addr[], uint8_t client_addr[], char* neighbor_report, int automatic_kick) {
     int own_score = -1;
 
     // find first client entry in probe array
@@ -355,6 +355,8 @@ int better_ap_available(uint8_t bssid_addr[], uint8_t client_addr[], int automat
     }
 
     int k;
+    int max_score = 0;
+    int kick = 0;
     for (k = i; k <= probe_entry_last; k++) {
         int score_to_compare;
 
@@ -376,10 +378,29 @@ int better_ap_available(uint8_t bssid_addr[], uint8_t client_addr[], int automat
         printf("Calculating score to compare!\n");
         score_to_compare = eval_probe_metric(probe_array[k]);
 
-        if (own_score < score_to_compare) {
-            return 1;
+        // instead of returning we append a neighbor report list...
+        if (own_score < score_to_compare && score_to_compare > max_score) {
+            if(neighbor_report == NULL)
+            {
+                fprintf(stderr,"Neigbor-Report is null!\n");
+                return 1;
+            }
+
+            kick = 1;
+            struct ap_s destap = ap_array_get_ap(probe_array[k].bssid_addr);
+
+            if (!mac_is_equal(destap.bssid_addr, probe_array[k].bssid_addr)) {
+                continue;
+            }
+
+            strcpy(neighbor_report,destap.neighbor_report);
+
+            max_score = score_to_compare;
+
+            //return 1;
         }
-        if (dawn_metric.use_station_count && own_score == score_to_compare) {
+
+        if (dawn_metric.use_station_count && own_score == score_to_compare && score_to_compare > max_score) {
 
             // only compare if score is bigger or equal 0
             if (own_score >= 0) {
@@ -387,17 +408,30 @@ int better_ap_available(uint8_t bssid_addr[], uint8_t client_addr[], int automat
                 // if ap have same value but station count is different...
                 if (compare_station_count(bssid_addr, probe_array[k].bssid_addr, probe_array[k].client_addr,
                                           automatic_kick)) {
-                    return 1;
+                    //return 1;
+                    kick = 1;
+                    if(neighbor_report == NULL)
+                    {
+                        fprintf(stderr,"Neigbor-Report is null!\n");
+                        return 1;
+                    }
+                    struct ap_s destap = ap_array_get_ap(probe_array[k].bssid_addr);
+
+                    if (!mac_is_equal(destap.bssid_addr, probe_array[k].bssid_addr)) {
+                        continue;
+                    }
+
+                    strcpy(neighbor_report,destap.neighbor_report);
+                    }
                 }
             }
         }
-    }
-    return 0;
+    return kick;
 }
 
-int kick_client(struct client_s client_entry) {
+int kick_client(struct client_s client_entry, char* neighbor_report) {
     return !mac_in_maclist(client_entry.client_addr) &&
-           better_ap_available(client_entry.bssid_addr, client_entry.client_addr, 1);
+           better_ap_available(client_entry.bssid_addr, client_entry.client_addr, neighbor_report, 1);
 }
 
 void kick_clients(uint8_t bssid[], uint32_t id) {
@@ -439,8 +473,9 @@ void kick_clients(uint8_t bssid[], uint32_t id) {
             pthread_mutex_lock(&probe_array_mutex);
 
         }
-
-        int do_kick = kick_client(client_array[j]);
+        char neighbor_report[NEIGHBOR_REPORT_LEN] = "";
+        int do_kick = kick_client(client_array[j], neighbor_report);
+        printf("Chosen AP %s\n",neighbor_report);
 
         // better ap available
         if (do_kick > 0) {
@@ -479,7 +514,8 @@ void kick_clients(uint8_t bssid[], uint32_t id) {
 
             // don't deauth station? <- deauth is better!
             // maybe we can use handovers...
-            del_client_interface(id, client_array[j].client_addr, NO_MORE_STAS, 1, 1000);
+            //del_client_interface(id, client_array[j].client_addr, NO_MORE_STAS, 1, 1000);
+            wnm_disassoc_imminent(id, client_array[j].client_addr, neighbor_report, 12);
             client_array_delete(client_array[j]);
 
             // don't delete clients in a row. use update function again...
@@ -1274,10 +1310,10 @@ void print_ap_entry(ap entry) {
     char mac_buf_ap[20];
 
     sprintf(mac_buf_ap, MACSTR, MAC2STR(entry.bssid_addr));
-    printf("ssid: %s, bssid_addr: %s, freq: %d, ht: %d, vht: %d, chan_utilz: %d, col_d: %d, bandwidth: %d, col_count: %d\n",
+    printf("ssid: %s, bssid_addr: %s, freq: %d, ht: %d, vht: %d, chan_utilz: %d, col_d: %d, bandwidth: %d, col_count: %d neighbor_report: %s\n",
            entry.ssid, mac_buf_ap, entry.freq, entry.ht_support, entry.vht_support,
            entry.channel_utilization, entry.collision_domain, entry.bandwidth,
-           ap_get_collision_count(entry.collision_domain)
+           ap_get_collision_count(entry.collision_domain), entry.neighbor_report
     );
 }
 
