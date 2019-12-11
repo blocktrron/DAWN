@@ -145,6 +145,7 @@ auth_entry insert_to_denied_req_array(auth_entry entry, int inc_counter);
 #define PROBE_ARRAY_LEN 1000
 
 #define SSID_MAX_LEN 32
+#define NEIGHBOR_REPORT_LEN 200
 
 // ---------------- Global variables ----------------
 struct probe_entry_s probe_array[PROBE_ARRAY_LEN];
@@ -204,6 +205,7 @@ typedef struct ap_s {
     time_t time;
     uint32_t station_count;
     uint8_t ssid[SSID_MAX_LEN];
+    char neighbor_report[NEIGHBOR_REPORT_LEN];
     uint32_t collision_domain;
     uint32_t bandwidth;
     uint32_t ap_weight;
@@ -270,7 +272,6 @@ void send_beacon_reports(uint8_t bssid[], int id);
 char *sort_string;
 
 // ---------------- Functions -------------------
-int better_ap_available(uint8_t bssid_addr[], uint8_t client_addr[], int automatic_kick);
-
+int better_ap_available(uint8_t bssid_addr[], uint8_t client_addr[], char* neighbor_report, int automatic_kick);
 
 #endif

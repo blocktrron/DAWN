@@ -85,6 +85,13 @@ struct hostapd_sock_entry {
     int chan_util_samples_sum;
     int chan_util_num_sample_periods;
     int chan_util_average;
+
+    // add neighbor report string
+    /*
+    [Elemen ID|1][LENGTH|1][BSSID|6][BSSID INFORMATION|4][Operating Class|1][Channel Number|1][PHY Type|1][Operational Subelements]
+    */
+    char neighbor_report[NEIGHBOR_REPORT_LEN];
+
     struct ubus_subscriber subscriber;
     struct ubus_event_handler wait_handler;
     bool subscribed;
@@ -194,6 +201,8 @@ enum {
     CLIENT_TABLE_COL_DOMAIN,
     CLIENT_TABLE_BANDWIDTH,
     CLIENT_TABLE_WEIGHT,
+    CLIENT_TABLE_NEIGHBOR,
+    CLIENT_TABLE_RRM,
     __CLIENT_TABLE_MAX,
 };
 
@@ -209,6 +218,8 @@ static const struct blobmsg_policy client_table_policy[__CLIENT_TABLE_MAX] = {
         [CLIENT_TABLE_COL_DOMAIN] = {.name = "collision_domain", .type = BLOBMSG_TYPE_INT32},
         [CLIENT_TABLE_BANDWIDTH] = {.name = "bandwidth", .type = BLOBMSG_TYPE_INT32},
         [CLIENT_TABLE_WEIGHT] = {.name = "ap_weight", .type = BLOBMSG_TYPE_INT32},
+        [CLIENT_TABLE_NEIGHBOR] = {.name = "neighbor_report", .type = BLOBMSG_TYPE_STRING},
+        [CLIENT_TABLE_RRM] = {.name = "rrm", .type = BLOBMSG_TYPE_ARRAY},
 };
 
 enum {
@@ -260,6 +271,15 @@ enum {
 static const struct blobmsg_policy dawn_umdns_policy[__DAWN_UMDNS_MAX] = {
         [DAWN_UMDNS_IPV4] = {.name = "ipv4", .type = BLOBMSG_TYPE_STRING},
         [DAWN_UMDNS_PORT] = {.name = "port", .type = BLOBMSG_TYPE_INT32},
+};
+
+enum {
+    RRM_ARRAY,
+    __RRM_MAX,
+};
+
+static const struct blobmsg_policy rrm_array_policy[__RRM_MAX] = {
+        [RRM_ARRAY] = {.name = "value", .type = BLOBMSG_TYPE_ARRAY},
 };
 
 /* Function Definitions */
@@ -342,7 +362,7 @@ static int decide_function(probe_entry *prob_req, int req_type) {
         return 1;
     }
 
-    if (better_ap_available(prob_req->bssid_addr, prob_req->client_addr, 0)) {
+    if (better_ap_available(prob_req->bssid_addr, prob_req->client_addr, NULL, 0)) {
         return 0;
     }
 
@@ -642,6 +662,8 @@ int handle_network_msg(char *msg) {
         return -1;
     }
 
+    // add inactive death...
+
     if (strncmp(method, "probe", 5) == 0) {
         probe_entry entry;
         if (parse_to_probe_req(data_buf.head, &entry) == 0) {
@@ -841,6 +863,12 @@ dump_client(struct blob_attr **tb, uint8_t client_addr[], const char *bssid_addr
     if (tb[CLIENT_AID]) {
         client_entry.aid = blobmsg_get_u32(tb[CLIENT_AID]);
     }
+        /* RRM Caps */
+    if (tb[CLIENT_TABLE_RRM]) {
+        //ap_entry.ap_weight = blobmsg_get_u32(tb[CLIENT_TABLE_RRM]);
+    } else {
+        //ap_entry.ap_weight = 0;
+    }
 
     // copy signature
     if (tb[CLIENT_SIGNATURE]) {
@@ -950,6 +978,11 @@ int parse_to_clients(struct blob_attr *msg, int do_kick, uint32_t id) {
             ap_entry.ap_weight = 0;
         }
 
+
+        if (tb[CLIENT_TABLE_NEIGHBOR]) {
+            strcpy(ap_entry.neighbor_report, blobmsg_get_string(tb[CLIENT_TABLE_NEIGHBOR]));
+        }
+
         insert_to_ap_array(ap_entry);
 
         if (do_kick && dawn_metric.kicking) {
@@ -998,6 +1031,8 @@ static void ubus_get_clients_cb(struct ubus_request *req, int type, struct blob_
     //int channel_util = get_channel_utilization(entry->iface_name, &entry->last_channel_time, &entry->last_channel_time_busy);
     blobmsg_add_u32(&b_domain, "channel_utilization", entry->chan_util_average);
 
+    blobmsg_add_string(&b_domain, "neighbor_report", entry->neighbor_report);
+
     send_blob_attr_via_network(b_domain.head, "clients");
     parse_to_clients(b_domain.head, 1, req->peer);
 
@@ -1015,6 +1050,55 @@ static int ubus_get_clients() {
         if (sub->subscribed) {
             blob_buf_init(&b_clients, 0);
             ubus_invoke(ctx, sub->id, "get_clients", b_clients.head, ubus_get_clients_cb, NULL, timeout * 1000);
+        }
+    }
+    return 0;
+}
+
+static void ubus_get_rrm_cb(struct ubus_request *req, int type, struct blob_attr *msg) {
+    struct hostapd_sock_entry *sub, *entry = NULL;
+    struct blob_attr *tb[__RRM_MAX];
+
+    if (!msg)
+        return;
+
+    list_for_each_entry(sub, &hostapd_sock_list, list)
+    {
+        if (sub->id == req->peer) {
+            entry = sub;
+        }
+    }
+
+    blobmsg_parse(rrm_array_policy, __RRM_MAX, tb, blob_data(msg), blob_len(msg));
+
+    if (!tb[RRM_ARRAY]) {
+        return;
+    }
+    struct blob_attr *attr;
+    //struct blobmsg_hdr *hdr;
+    int len = blobmsg_data_len(tb[RRM_ARRAY]);
+    int i = 0;
+
+     __blob_for_each_attr(attr, blobmsg_data(tb[RRM_ARRAY]), len)
+     {
+         if(i==2)
+         {
+            char* neighborreport = blobmsg_get_string(blobmsg_data(attr));
+            strcpy(entry->neighbor_report,neighborreport);
+            printf("Copied Neighborreport: %s,\n", entry->neighbor_report);
+         }
+         i++;
+     }
+}
+
+static int ubus_get_rrm() {
+    int timeout = 1;
+    struct hostapd_sock_entry *sub;
+    list_for_each_entry(sub, &hostapd_sock_list, list)
+    {
+        if (sub->subscribed) {
+            blob_buf_init(&b, 0);
+            ubus_invoke(ctx, sub->id, "rrm_nr_get_own", b.head, ubus_get_rrm_cb, NULL, timeout * 1000);
         }
     }
     return 0;
@@ -1133,6 +1217,32 @@ void del_client_interface(uint32_t id, const uint8_t *client_addr, uint32_t reas
         }
     }
 
+}
+
+void wnm_disassoc_imminent(uint32_t id, const uint8_t *client_addr, char* dest_ap, uint32_t duration) {
+        struct hostapd_sock_entry *sub;
+
+    blob_buf_init(&b, 0);
+    blobmsg_add_macaddr(&b, "addr", client_addr);
+    blobmsg_add_u32(&b, "duration", duration);
+    blobmsg_add_u8(&b, "abridged", 1); // prefer aps in neighborlist
+
+    // ToDo: maybe exchange to a list of aps
+    void* nbs = blobmsg_open_array(&b, "neighbors");
+    if(dest_ap!=NULL)
+    {
+        blobmsg_add_string(&b, NULL, dest_ap);
+        printf("BSS TRANSITION TO %s\n", dest_ap);
+    }
+
+    blobmsg_close_array(&b, nbs);
+    list_for_each_entry(sub, &hostapd_sock_list, list)
+    {
+        if (sub->subscribed) {
+            int timeout = 1;
+            ubus_invoke(ctx, id, "wnm_disassoc_imminent", b.head, NULL, NULL, timeout * 1000);
+        }
+    }
 }
 
 static void ubus_umdns_cb(struct ubus_request *req, int type, struct blob_attr *msg) {
@@ -1356,6 +1466,20 @@ static void respond_to_notify(uint32_t id) {
         fprintf(stderr, "Failed to invoke: %s\n", ubus_strerror(ret));
 }
 
+static void enable_rrm(uint32_t id) {
+    int ret;
+
+    blob_buf_init(&b, 0);
+    blobmsg_add_u8(&b, "neighbor_report", 1);
+    blobmsg_add_u8(&b, "beacon_report", 1);
+    blobmsg_add_u8(&b, "bss_transition", 1);    
+
+    int timeout = 1;
+    ret = ubus_invoke(ctx, id, "bss_mgmt_enable", b.head, NULL, NULL, timeout * 1000);
+    if (ret)
+        fprintf(stderr, "Failed to invoke: %s\n", ubus_strerror(ret));
+}
+
 static void hostapd_handle_remove(struct ubus_context *ctx,
                                   struct ubus_subscriber *s, uint32_t id) {
     fprintf(stdout, "Object %08x went away\n", id);
@@ -1401,6 +1525,8 @@ bool subscribe(struct hostapd_sock_entry *hostapd_entry) {
     hostapd_entry->vht_support = (uint8_t) support_vht(hostapd_entry->iface_name);
 
     respond_to_notify(hostapd_entry->id);
+    enable_rrm(hostapd_entry->id);
+    ubus_get_rrm();
 
     printf("Subscribed to: %s\n", hostapd_entry->iface_name);
 
