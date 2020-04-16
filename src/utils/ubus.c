@@ -1142,10 +1142,10 @@ void ubus_send_beacon_report(uint8_t client[], int id)
     int timeout = 1;
     blob_buf_init(&b_beacon, 0);
     blobmsg_add_macaddr(&b_beacon, "addr", client);
-    blobmsg_add_u32(&b_beacon, "op_class", 0);
-    blobmsg_add_u32(&b_beacon, "channel", 0);
-    blobmsg_add_u32(&b_beacon, "duration", 0);
-    blobmsg_add_u32(&b_beacon, "mode", 2);
+    blobmsg_add_u32(&b_beacon, "op_class", dawn_metric.op_class);
+    blobmsg_add_u32(&b_beacon, "channel", dawn_metric.scan_channel);
+    blobmsg_add_u32(&b_beacon, "duration", dawn_metric.duration);
+    blobmsg_add_u32(&b_beacon, "mode", dawn_metric.mode);
     printf("Adding string\n");
     blobmsg_add_string(&b_beacon, "ssid", "");
 
@@ -1654,6 +1654,10 @@ int uci_send_via_network()
     blobmsg_add_u32(&b, "use_driver_recog", dawn_metric.use_driver_recog);
     blobmsg_add_u32(&b, "min_number_to_kick", dawn_metric.min_kick_count);
     blobmsg_add_u32(&b, "chan_util_avg_period", dawn_metric.chan_util_avg_period);
+    blobmsg_add_u32(&b, "op_class", dawn_metric.op_class);
+    blobmsg_add_u32(&b, "duration", dawn_metric.duration);
+    blobmsg_add_u32(&b, "mode", dawn_metric.mode);
+    blobmsg_add_u32(&b, "scan_channel", dawn_metric.scan_channel);
     blobmsg_close_table(&b, metric);
 
     times = blobmsg_open_table(&b, "times");
@@ -1705,6 +1709,10 @@ enum {
     UCI_USE_DRIVER_RECOG,
     UCI_MIN_NUMBER_TO_KICK,
     UCI_CHAN_UTIL_AVG_PERIOD,
+    UCI_OP_CLASS,
+    UCI_DURATION,
+    UCI_MODE,
+    UCI_SCAN_CHANNEL,
     __UCI_METIC_MAX
 };
 
@@ -1753,6 +1761,10 @@ static const struct blobmsg_policy uci_metric_policy[__UCI_METIC_MAX] = {
         [UCI_USE_DRIVER_RECOG] = {.name = "use_driver_recog", .type = BLOBMSG_TYPE_INT32},
         [UCI_MIN_NUMBER_TO_KICK] = {.name = "min_number_to_kick", .type = BLOBMSG_TYPE_INT32},
         [UCI_CHAN_UTIL_AVG_PERIOD] = {.name = "chan_util_avg_period", .type = BLOBMSG_TYPE_INT32},
+        [UCI_OP_CLASS] = {.name = "op_class", .type = BLOBMSG_TYPE_INT32},
+        [UCI_DURATION] = {.name = "duration", .type = BLOBMSG_TYPE_INT32},
+        [UCI_MODE] = {.name = "mode", .type = BLOBMSG_TYPE_INT32},
+        [UCI_SCAN_CHANNEL] = {.name = "mode", .type = BLOBMSG_TYPE_INT32},
 };
 
 static const struct blobmsg_policy uci_times_policy[__UCI_TIMES_MAX] = {
@@ -1852,6 +1864,18 @@ int handle_uci_config(struct blob_attr *msg) {
     uci_set_network(cmd_buffer);
 
     sprintf(cmd_buffer, "dawn.@metric[0].chan_util_avg_period=%d", blobmsg_get_u32(tb_metric[UCI_CHAN_UTIL_AVG_PERIOD]));
+    uci_set_network(cmd_buffer);
+
+    sprintf(cmd_buffer, "dawn.@metric[0].op_class=%d", blobmsg_get_u32(tb_metric[UCI_OP_CLASS]));
+    uci_set_network(cmd_buffer);
+
+    sprintf(cmd_buffer, "dawn.@metric[0].duration=%d", blobmsg_get_u32(tb_metric[UCI_DURATION]));
+    uci_set_network(cmd_buffer);
+
+    sprintf(cmd_buffer, "dawn.@metric[0].mode=%d", blobmsg_get_u32(tb_metric[UCI_MODE]));
+    uci_set_network(cmd_buffer);
+
+    sprintf(cmd_buffer, "dawn.@metric[0].scan_channel=%d", blobmsg_get_u32(tb_metric[UCI_SCAN_CHANNEL]));
     uci_set_network(cmd_buffer);
 
     struct blob_attr *tb_times[__UCI_TIMES_MAX];

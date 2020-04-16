@@ -77,6 +77,10 @@ struct probe_metric_s uci_get_dawn_metric() {
             ret.use_driver_recog = uci_lookup_option_int(uci_ctx, s, "use_driver_recog");
             ret.min_kick_count = uci_lookup_option_int(uci_ctx, s, "min_number_to_kick");
             ret.chan_util_avg_period = uci_lookup_option_int(uci_ctx, s, "chan_util_avg_period");
+            ret.op_class = uci_lookup_option_int(uci_ctx, s, "op_class");
+            ret.duration = uci_lookup_option_int(uci_ctx, s, "duration");
+            ret.mode = uci_lookup_option_int(uci_ctx, s, "mode");
+            ret.scan_channel = uci_lookup_option_int(uci_ctx, s, "scan_channel");
             return ret;
         }
     }

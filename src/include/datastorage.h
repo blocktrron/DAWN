@@ -63,6 +63,10 @@ struct probe_metric_s {
     int min_kick_count;
     int chan_util_avg_period;
     int kicking;
+    int op_class;
+    int duration;
+    int mode;
+    int scan_channel;
 };
 
 struct time_config_s {
