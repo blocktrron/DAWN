@@ -225,7 +225,11 @@ int build_network_overview(struct blob_buf *b) {
             blobmsg_add_u32(b, "channel_utilization", ap_entry_i.channel_utilization);
             blobmsg_add_u32(b, "num_sta", ap_entry_i.station_count);
             blobmsg_add_u8(b, "ht_support", ap_entry_i.ht_support);
-            blobmsg_add_u8(b, "vht_support", ap_entry_i.vht_support);            
+            blobmsg_add_u8(b, "vht_support", ap_entry_i.vht_support);
+
+            char *nr;
+            nr = blobmsg_alloc_string_buffer(b, "neighbor_report", ap_entry_i.neighbor_report, NEIGHBOR_REPORT_LEN);
+            blobmsg_add_string_buffer(nr);
 
             for (k = i; k <= client_entry_last; k++) {
                 if (!mac_is_equal(client_array[k].bssid_addr, client_array[i].bssid_addr)) {
