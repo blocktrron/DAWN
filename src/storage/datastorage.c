@@ -228,8 +228,9 @@ int build_network_overview(struct blob_buf *b) {
             blobmsg_add_u8(b, "vht_support", ap_entry_i.vht_support);
 
             char *nr;
-            nr = blobmsg_alloc_string_buffer(b, "neighbor_report", ap_entry_i.neighbor_report, NEIGHBOR_REPORT_LEN);
-            blobmsg_add_string_buffer(nr);
+            nr = blobmsg_alloc_string_buffer(b, "neighbor_report", NEIGHBOR_REPORT_LEN);
+            sprintf(nr, "%s", ap_entry_i.neighbor_report);
+            blobmsg_add_string_buffer(b);
 
             for (k = i; k <= client_entry_last; k++) {
                 if (!mac_is_equal(client_array[k].bssid_addr, client_array[i].bssid_addr)) {

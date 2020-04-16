@@ -61,6 +61,7 @@ struct uloop_timeout channel_utilization_timer = {
 
 struct uloop_timeout usock_timer = {
         .cb = run_server_update
+};
 
 struct uloop_timeout beacon_reports_timer = {
         .cb = update_beacon_reports
@@ -576,7 +577,7 @@ static int handle_probe_req(struct blob_attr *msg) {
     probe_entry tmp_prob_req;
 
     if (parse_to_probe_req(msg, &prob_req) == 0) {
-        tmp_prob_req = insert_to_array(prob_req, 1);
+        tmp_prob_req = insert_to_array(prob_req, 1, true);
         send_blob_attr_via_network(msg, "probe");
     }
 
