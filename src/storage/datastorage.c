@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <libubox/uloop.h>
 
+#include "debugprint.h"
 #include "ubus.h"
 #include "dawn_iwinfo.h"
 #include "utils.h"
@@ -35,8 +36,6 @@ void ap_array_insert(ap entry);
 ap ap_array_delete(ap entry);
 
 void remove_old_ap_entries(time_t current_time, long long int threshold);
-
-void print_ap_entry(ap entry);
 
 int is_connected(uint8_t bssid_addr[], uint8_t client_addr[]);
 
@@ -110,7 +109,7 @@ void send_beacon_reports(uint8_t bssid[], int id) {
 }
 
 int build_hearing_map_sort_client(struct blob_buf *b) {
-    print_probe_array();
+    print_probe_array(probe_array, probe_entry_last);
     pthread_mutex_lock(&probe_array_mutex);
 
     void *client_list, *ap_list, *ssid_list;
@@ -300,7 +299,7 @@ int eval_probe_metric(struct probe_entry_s probe_entry) {
         score = -2; // -1 already used...
 
     printf("Score: %d of:\n", score);
-    print_probe_entry(probe_entry);
+    print_probe_entry(&probe_entry);
 
     return score;
 }
@@ -393,7 +392,7 @@ int better_ap_available(uint8_t bssid_addr[], uint8_t client_addr[], char* neigh
 
         if (mac_is_equal(bssid_addr, probe_array[k].bssid_addr)) {
             printf("Own Score! Skipping!\n");
-            print_probe_entry(probe_array[k]);
+            print_probe_entry(&probe_array[k]);
             continue;
         }
 
@@ -519,7 +518,7 @@ void kick_clients(uint8_t bssid[], uint32_t id) {
             }
 
             printf("Better AP available. Kicking client:\n");
-            print_client_entry(client_array[j]);
+            print_client_entry(&client_array[j]);
             printf("Check if client is active receiving!\n");
 
             float rx_rate, tx_rate;
@@ -553,13 +552,13 @@ void kick_clients(uint8_t bssid[], uint32_t id) {
             // no entry in probe array for own bssid
         } else if (do_kick == -1) {
             printf("No Information about client. Force reconnect:\n");
-            print_client_entry(client_array[j]);
+            print_client_entry(&client_array[j]);
             del_client_interface(id, client_array[j].client_addr, 0, 1, 0);
 
             // ap is best
         } else {
             printf("AP is best. Client will stay:\n");
-            print_client_entry(client_array[j]);
+            print_client_entry(&client_array[j]);
             // set kick counter to 0 again
             client_array[j].kick_count = 0;
         }
@@ -840,15 +839,6 @@ probe_entry probe_array_get_entry(uint8_t bssid_addr[], uint8_t client_addr[]) {
     pthread_mutex_unlock(&probe_array_mutex);
 
     return tmp;
-}
-
-void print_probe_array() {
-    printf("------------------\n");
-    printf("Probe Entry Last: %d\n", probe_entry_last);
-    for (int i = 0; i <= probe_entry_last; i++) {
-        print_probe_entry(probe_array[i]);
-    }
-    printf("------------------\n");
 }
 
 probe_entry insert_to_array(probe_entry entry, int inc_counter, int save_80211k, int is_beacon) {
@@ -1350,75 +1340,4 @@ int mac_is_greater(uint8_t addr1[], uint8_t addr2[]) {
         // if equal continue...
     }
     return 0;
-}
-
-void print_probe_entry(probe_entry entry) {
-    char mac_buf_ap[20];
-    char mac_buf_client[20];
-    char mac_buf_target[20];
-
-    sprintf(mac_buf_ap, MACSTR, MAC2STR(entry.bssid_addr));
-    sprintf(mac_buf_client, MACSTR, MAC2STR(entry.client_addr));
-    sprintf(mac_buf_target, MACSTR, MAC2STR(entry.target_addr));
-
-    printf(
-            "bssid_addr: %s, client_addr: %s, signal: %d, freq: "
-            "%d, counter: %d, vht: %d, min_rate: %d, max_rate: %d\n",
-            mac_buf_ap, mac_buf_client, entry.signal, entry.freq, entry.counter, entry.vht_capabilities,
-            entry.min_supp_datarate, entry.max_supp_datarate);
-}
-
-void print_auth_entry(auth_entry entry) {
-    char mac_buf_ap[20];
-    char mac_buf_client[20];
-    char mac_buf_target[20];
-
-    sprintf(mac_buf_ap, MACSTR, MAC2STR(entry.bssid_addr));
-    sprintf(mac_buf_client, MACSTR, MAC2STR(entry.client_addr));
-    sprintf(mac_buf_target, MACSTR, MAC2STR(entry.target_addr));
-
-    printf(
-            "bssid_addr: %s, client_addr: %s, signal: %d, freq: "
-            "%d\n",
-            mac_buf_ap, mac_buf_client, entry.signal, entry.freq);
-}
-
-void print_client_entry(client entry) {
-    char mac_buf_ap[20];
-    char mac_buf_client[20];
-
-    sprintf(mac_buf_ap, MACSTR, MAC2STR(entry.bssid_addr));
-    sprintf(mac_buf_client, MACSTR, MAC2STR(entry.client_addr));
-
-    printf("bssid_addr: %s, client_addr: %s, freq: %d, ht_supported: %d, vht_supported: %d, ht: %d, vht: %d, kick: %d\n",
-           mac_buf_ap, mac_buf_client, entry.freq, entry.ht_supported, entry.vht_supported, entry.ht, entry.vht,
-           entry.kick_count);
-}
-
-void print_client_array() {
-    printf("--------Clients------\n");
-    printf("Client Entry Last: %d\n", client_entry_last);
-    for (int i = 0; i <= client_entry_last; i++) {
-        print_client_entry(client_array[i]);
-    }
-    printf("------------------\n");
-}
-
-void print_ap_entry(ap entry) {
-    char mac_buf_ap[20];
-
-    sprintf(mac_buf_ap, MACSTR, MAC2STR(entry.bssid_addr));
-    printf("ssid: %s, bssid_addr: %s, freq: %d, ht: %d, vht: %d, chan_utilz: %d, col_d: %d, bandwidth: %d, col_count: %d neighbor_report: %s\n",
-           entry.ssid, mac_buf_ap, entry.freq, entry.ht_support, entry.vht_support,
-           entry.channel_utilization, entry.collision_domain, entry.bandwidth,
-           ap_get_collision_count(entry.collision_domain), entry.neighbor_report
-    );
-}
-
-void print_ap_array() {
-    printf("--------APs------\n");
-    for (int i = 0; i <= ap_entry_last; i++) {
-        print_ap_entry(ap_array[i]);
-    }
-    printf("------------------\n");
 }

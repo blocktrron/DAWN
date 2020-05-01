@@ -25,6 +25,9 @@ SET(SOURCES
         utils/ubus.c
         include/ubus.h
 
+        utils/debugprint.c
+        include/debugprint.h
+
         utils/dawn_uci.c
         include/dawn_uci.h
 

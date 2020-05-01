@@ -165,12 +165,6 @@ probe_entry probe_array_delete(probe_entry entry);
 
 probe_entry probe_array_get_entry(uint8_t bssid_addr[], uint8_t client_addr[]);
 
-void print_probe_array();
-
-void print_probe_entry(probe_entry entry);
-
-void print_auth_entry(auth_entry entry);
-
 void uloop_add_data_cbs();
 
 /* AP, Client */
@@ -248,13 +242,7 @@ void client_array_insert(client entry);
 
 client client_array_delete(client entry);
 
-void print_client_array();
-
-void print_client_entry(client entry);
-
 ap insert_to_ap_array(ap entry);
-
-void print_ap_array();
 
 ap ap_array_get_ap(uint8_t bssid_addr[]);
 

@@ -9,6 +9,7 @@
 
 #define MACSTR "%02X:%02X:%02X:%02X:%02X:%02X"
 #define MACSTRLOWER "%02x:%02x:%02x:%02x:%02x:%02x"
+#define MACSTRLEN	20
 
 /**
  * Convert char to binary.

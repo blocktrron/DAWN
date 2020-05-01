@@ -16,6 +16,7 @@
 
 #include "ubus.h"
 
+#include "debugprint.h"
 #include "networksocket.h"
 #include "utils.h"
 #include "dawn_uci.h"
@@ -36,6 +37,10 @@ static struct blob_buf b_clients;
 static struct blob_buf b_umdns;
 static struct blob_buf b_beacon;
 static struct blob_buf b_nr;
+
+extern int ap_entry_last;
+extern int probe_entry_last;
+extern int client_entry_last;
 
 void update_clients(struct uloop_timeout *t);
 
@@ -530,12 +535,12 @@ int parse_to_beacon_rep(struct blob_attr *msg, probe_entry *beacon_rep) {
 
 static int handle_auth_req(struct blob_attr *msg) {
 
-    print_probe_array();
+    print_probe_array(probe_array, probe_entry_last);
     auth_entry auth_req;
     parse_to_auth_req(msg, &auth_req);
 
     printf("Auth entry: ");
-    print_auth_entry(auth_req);
+    print_auth_entry(&auth_req);
 
     if (mac_in_maclist(auth_req.client_addr)) {
         return WLAN_STATUS_SUCCESS;
@@ -544,7 +549,7 @@ static int handle_auth_req(struct blob_attr *msg) {
     probe_entry tmp = probe_array_get_entry(auth_req.bssid_addr, auth_req.client_addr);
 
     printf("Entry found\n");
-    print_probe_entry(tmp);
+    print_probe_entry(&tmp);
 
     // block if entry was not already found in probe database
     if (!(mac_is_equal(tmp.bssid_addr, auth_req.bssid_addr) && mac_is_equal(tmp.client_addr, auth_req.client_addr))) {
@@ -571,11 +576,11 @@ static int handle_auth_req(struct blob_attr *msg) {
 
 static int handle_assoc_req(struct blob_attr *msg) {
 
-    print_probe_array();
+    print_probe_array(probe_array, probe_entry_last);
     auth_entry auth_req;
     parse_to_assoc_req(msg, &auth_req);
     printf("Association entry: ");
-    print_auth_entry(auth_req);
+    print_auth_entry(&auth_req);
 
     if (mac_in_maclist(auth_req.client_addr)) {
         return WLAN_STATUS_SUCCESS;
@@ -584,7 +589,7 @@ static int handle_assoc_req(struct blob_attr *msg) {
     probe_entry tmp = probe_array_get_entry(auth_req.bssid_addr, auth_req.client_addr);
 
     printf("Entry found\n");
-    print_probe_entry(tmp);
+    print_probe_entry(&tmp);
 
     // block if entry was not already found in probe database
     if (!(mac_is_equal(tmp.bssid_addr, auth_req.bssid_addr) && mac_is_equal(tmp.client_addr, auth_req.client_addr))) {
@@ -1078,8 +1083,8 @@ static void ubus_get_clients_cb(struct ubus_request *req, int type, struct blob_
     send_blob_attr_via_network(b_domain.head, "clients");
     parse_to_clients(b_domain.head, 1, req->peer);
 
-    print_client_array();
-    print_ap_array();
+    print_client_array(client_array, client_entry_last);
+    print_ap_array(ap_array, ap_entry_last);
 
     free(data_str);
 }
