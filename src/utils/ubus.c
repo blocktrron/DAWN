@@ -556,7 +556,7 @@ static int handle_auth_req(struct blob_attr *msg) {
         printf("Deny authentication!\n");
 
         if (dawn_metric.use_driver_recog) {
-            insert_to_denied_req_array(auth_req, 1);
+            add_denied_probe_request(&auth_req);
         }
         return dawn_metric.deny_auth_reason;
     }
@@ -564,7 +564,7 @@ static int handle_auth_req(struct blob_attr *msg) {
     if (!decide_function(&tmp, REQ_TYPE_AUTH)) {
         printf("Deny authentication\n");
         if (dawn_metric.use_driver_recog) {
-            insert_to_denied_req_array(auth_req, 1);
+            add_denied_probe_request(&auth_req);
         }
         return dawn_metric.deny_auth_reason;
     }
@@ -595,7 +595,7 @@ static int handle_assoc_req(struct blob_attr *msg) {
     if (!(mac_is_equal(tmp.bssid_addr, auth_req.bssid_addr) && mac_is_equal(tmp.client_addr, auth_req.client_addr))) {
         printf("Deny associtation!\n");
         if (dawn_metric.use_driver_recog) {
-            insert_to_denied_req_array(auth_req, 1);
+            add_denied_probe_request(&auth_req);
         }
         return dawn_metric.deny_assoc_reason;
     }
@@ -603,7 +603,7 @@ static int handle_assoc_req(struct blob_attr *msg) {
     if (!decide_function(&tmp, REQ_TYPE_ASSOC)) {
         printf("Deny association\n");
         if (dawn_metric.use_driver_recog) {
-            insert_to_denied_req_array(auth_req, 1);
+            add_denied_probe_request(&auth_req);
         }
         return dawn_metric.deny_assoc_reason;
     }

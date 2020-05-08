@@ -146,6 +146,17 @@ pthread_mutex_t denied_array_mutex;
 
 auth_entry insert_to_denied_req_array(auth_entry entry, int inc_counter);
 
+/* List structs */
+
+struct denied_list {
+    auth_entry *ptr;
+    size_t len;
+    size_t size;
+    pthread_mutex_t array_mutex;
+};
+
+void add_denied_probe_request(auth_entry *entry);
+
 // ---------------- Defines ----------------
 #define PROBE_ARRAY_LEN 1000
 

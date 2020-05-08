@@ -39,28 +39,20 @@ void remove_old_ap_entries(time_t current_time, long long int threshold);
 
 int is_connected(uint8_t bssid_addr[], uint8_t client_addr[]);
 
-int is_connected_somehwere(uint8_t client_addr[]);
-
 int compare_station_count(uint8_t *bssid_addr_own, uint8_t *bssid_addr_to_compare, uint8_t *client_addr,
                           int automatic_kick);
 
 int compare_ssid(uint8_t *bssid_addr_own, uint8_t *bssid_addr_to_compare);
 
-void denied_req_array_insert(auth_entry entry);
+void denied_req_array_cb(struct uloop_timeout *t);
 
-auth_entry denied_req_array_delete(auth_entry entry);
+extern void clean_denied_probe_requests(time_t threshold);
 
-int denied_req_array_go_next(char sort_order[], int i, auth_entry entry,
-                             auth_entry next_entry);
-
-int denied_req_array_go_next_help(char sort_order[], int i, auth_entry entry,
-                                  auth_entry next_entry);
 
 int probe_entry_last = -1;
 int client_entry_last = -1;
 int ap_entry_last = -1;
 int mac_list_entry_last = -1;
-int denied_req_last = -1;
 
 void remove_probe_array_cb(struct uloop_timeout *t);
 
@@ -80,11 +72,14 @@ struct uloop_timeout ap_timeout = {
         .cb = remove_ap_array_cb
 };
 
-void denied_req_array_cb(struct uloop_timeout *t);
-
 struct uloop_timeout denied_req_timeout = {
         .cb = denied_req_array_cb
 };
+
+void denied_req_array_cb(struct uloop_timeout *t) {
+	clean_denied_probe_requests(timeout_config.denied_req_threshold);
+	uloop_timeout_set(&denied_req_timeout, timeout_config.denied_req_threshold * 1000);
+}
 
 void send_beacon_reports(uint8_t bssid[], int id) {
     pthread_mutex_lock(&client_array_mutex);
@@ -568,23 +563,6 @@ void kick_clients(uint8_t bssid[], uint32_t id) {
 
     pthread_mutex_unlock(&probe_array_mutex);
     pthread_mutex_unlock(&client_array_mutex);
-}
-
-int is_connected_somehwere(uint8_t client_addr[]) {
-    int i;
-    int found_in_array = 0;
-
-    if (client_entry_last == -1) {
-        return 0;
-    }
-
-    for (i = 0; i <= client_entry_last; i++) {
-        if (mac_is_equal(client_addr, client_array[i].client_addr)) {
-            found_in_array = 1;
-            break;
-        }
-    }
-    return found_in_array;
 }
 
 int is_connected(uint8_t bssid_addr[], uint8_t client_addr[]) {
@@ -1071,35 +1049,7 @@ void remove_ap_array_cb(struct uloop_timeout *t) {
     uloop_timeout_set(&ap_timeout, timeout_config.remove_ap * 1000);
 }
 
-void denied_req_array_cb(struct uloop_timeout *t) {
-    pthread_mutex_lock(&denied_array_mutex);
-    printf("[ULOOP] : Processing denied authentication!\n");
 
-    time_t current_time = time(0);
-
-    for (int i = 0; i <= denied_req_last; i++) {
-        // check counter
-
-        //check timer
-        if (denied_req_array[i].time < current_time - timeout_config.denied_req_threshold) {
-
-            // client is not connected for a given time threshold!
-            if (!is_connected_somehwere(denied_req_array[i].client_addr)) {
-                printf("Client has probably a bad driver!\n");
-
-                // problem that somehow station will land into this list
-                // maybe delete again?
-                if (insert_to_maclist(denied_req_array[i].client_addr) == 0) {
-                    send_add_mac(denied_req_array[i].client_addr);
-                    write_mac_to_file("/tmp/dawn_mac_list", denied_req_array[i].client_addr);
-                }
-            }
-            denied_req_array_delete(denied_req_array[i]);
-        }
-    }
-    pthread_mutex_unlock(&denied_array_mutex);
-    uloop_timeout_set(&denied_req_timeout, timeout_config.denied_req_threshold * 1000);
-}
 
 void insert_client_to_array(client entry) {
     pthread_mutex_lock(&client_array_mutex);
@@ -1176,108 +1126,7 @@ int mac_in_maclist(uint8_t mac[]) {
     return 0;
 }
 
-auth_entry insert_to_denied_req_array(auth_entry entry, int inc_counter) {
-    pthread_mutex_lock(&denied_array_mutex);
 
-    entry.time = time(0);
-    entry.counter = 0;
-    auth_entry tmp = denied_req_array_delete(entry);
-
-    if (mac_is_equal(entry.bssid_addr, tmp.bssid_addr)
-        && mac_is_equal(entry.client_addr, tmp.client_addr)) {
-        entry.counter = tmp.counter;
-    }
-
-    if (inc_counter) {
-
-        entry.counter++;
-    }
-
-    denied_req_array_insert(entry);
-
-    pthread_mutex_unlock(&denied_array_mutex);
-
-    return entry;
-}
-
-int denied_req_array_go_next_help(char sort_order[], int i, auth_entry entry,
-                                  auth_entry next_entry) {
-    switch (sort_order[i]) {
-        // bssid-mac
-        case 'b':
-            return mac_is_greater(entry.bssid_addr, next_entry.bssid_addr);
-            // client-mac
-        case 'c':
-            return mac_is_greater(entry.client_addr, next_entry.client_addr) &&
-                   mac_is_equal(entry.bssid_addr, next_entry.bssid_addr);
-        default:
-            break;
-    }
-    return 0;
-}
-
-int denied_req_array_go_next(char sort_order[], int i, auth_entry entry,
-                             auth_entry next_entry) {
-    int conditions = 1;
-    for (int j = 0; j < i; j++) {
-        i &= !(denied_req_array_go_next(sort_order, j, entry, next_entry));
-    }
-    return conditions && denied_req_array_go_next_help(sort_order, i, entry, next_entry);
-}
-
-void denied_req_array_insert(auth_entry entry) {
-    if (denied_req_last == -1) {
-        denied_req_array[0] = entry;
-        denied_req_last++;
-        return;
-    }
-
-    int i;
-    for (i = 0; i <= denied_req_last; i++) {
-        if (!denied_req_array_go_next("bc", 2, entry, denied_req_array[i])) {
-            break;
-        }
-    }
-    for (int j = denied_req_last; j >= i; j--) {
-        if (j + 1 <= DENY_REQ_ARRAY_LEN) {
-            denied_req_array[j + 1] = denied_req_array[j];
-        }
-    }
-    denied_req_array[i] = entry;
-
-    if (denied_req_last < DENY_REQ_ARRAY_LEN) {
-        denied_req_last++;
-    }
-}
-
-auth_entry denied_req_array_delete(auth_entry entry) {
-
-    int i;
-    int found_in_array = 0;
-    auth_entry tmp;
-
-    if (denied_req_last == -1) {
-        return tmp;
-    }
-
-    for (i = 0; i <= denied_req_last; i++) {
-        if (mac_is_equal(entry.bssid_addr, denied_req_array[i].bssid_addr) &&
-            mac_is_equal(entry.client_addr, denied_req_array[i].client_addr)) {
-            found_in_array = 1;
-            tmp = denied_req_array[i];
-            break;
-        }
-    }
-
-    for (int j = i; j < denied_req_last; j++) {
-        denied_req_array[j] = denied_req_array[j + 1];
-    }
-
-    if (denied_req_last > -1 && found_in_array) {
-        denied_req_last--;
-    }
-    return tmp;
-}
 
 int go_next_help(char sort_order[], int i, probe_entry entry,
                  probe_entry next_entry) {
