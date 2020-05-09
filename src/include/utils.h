@@ -11,6 +11,8 @@
 #define MACSTRLOWER "%02x:%02x:%02x:%02x:%02x:%02x"
 #define MACSTRLEN	20
 
+int mac_is_null(uint8_t *mac);
+
 /**
  * Convert char to binary.
  * @param ch

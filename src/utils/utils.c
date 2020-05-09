@@ -19,6 +19,11 @@ int string_is_greater(uint8_t *str, uint8_t *str_2) {
     return length_1 > length_2;
 }
 
+int mac_is_null(uint8_t *mac) {
+    uint8_t nullmac[6] = {};
+    return !memcmp(&nullmac, mac, 6);
+}
+
 // source: https://elixir.bootlin.com/linux/v4.9/source/lib/hexdump.c#L28
 int hex_to_bin(char ch) {
     if ((ch >= '0') && (ch <= '9')) return ch - '0';
