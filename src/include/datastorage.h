@@ -257,8 +257,6 @@ ap insert_to_ap_array(ap entry);
 
 ap ap_array_get_ap(uint8_t bssid_addr[]);
 
-int build_network_overview(struct blob_buf *b);
-
 int probe_array_set_all_probe_count(uint8_t client_addr[], uint32_t probe_count);
 
 int ap_get_collision_count(int col_domain);

@@ -309,10 +309,6 @@ static int reload_config(struct ubus_context *ctx, struct ubus_object *obj,
                          struct ubus_request_data *req, const char *method,
                          struct blob_attr *msg);
 
-static int get_network(struct ubus_context *ctx, struct ubus_object *obj,
-                       struct ubus_request_data *req, const char *method,
-                       struct blob_attr *msg);
-
 static int handle_set_probe(struct blob_attr *msg);
 
 static int parse_add_mac_to_file(struct blob_attr *msg);
@@ -1407,7 +1403,6 @@ static const struct blobmsg_policy add_del_policy[__ADD_DEL_MAC_MAX] = {
 
 static const struct ubus_method dawn_methods[] = {
         UBUS_METHOD("add_mac", add_mac, add_del_policy),
-        UBUS_METHOD_NOARG("get_network", get_network),
         UBUS_METHOD_NOARG("reload_config", reload_config)
 };
 
@@ -1482,18 +1477,6 @@ static int reload_config(struct ubus_context *ctx, struct ubus_object *obj,
         uloop_timeout_add(&beacon_reports_timer);
 
     uci_send_via_network();
-    ret = ubus_send_reply(ctx, req, b.head);
-    if (ret)
-        fprintf(stderr, "Failed to send reply: %s\n", ubus_strerror(ret));
-    return 0;
-}
-
-static int get_network(struct ubus_context *ctx, struct ubus_object *obj,
-                       struct ubus_request_data *req, const char *method,
-                       struct blob_attr *msg) {
-    int ret;
-
-    build_network_overview(&b);
     ret = ubus_send_reply(ctx, req, b.head);
     if (ret)
         fprintf(stderr, "Failed to send reply: %s\n", ubus_strerror(ret));

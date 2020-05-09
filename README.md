@@ -55,32 +55,6 @@ I setup the OpenWRT Router as dumb APs.
 
 
 ## ubus interface
-To get an overview of all connected Clients sorted by the SSID.
-
-    root@OpenWrt:~# ubus call dawn get_network
-    {
-	    "Free-Cookies": {
-		    "00:27:19:XX:XX:XX": {
-			    "78:02:F8:XX:XX:XX": {
-				    "freq": 2452,
-				    "ht": 1,
-				    "vht": 0,
-				    "collision_count": 4
-			    }
-		    },
-		    "A4:2B:B0:XX:XX:XX": {
-			    "48:27:EA:XX:XX:XX: {
-				    "freq": 2412,
-				    "ht": 1,
-				    "vht": 0,
-				    "collision_count": 4
-			    },
-		    }
-	    },
-	    "Free-Cookies_5G": {
-    		
-	    }
-    }
 
 
 ##  OpenWrt in a Nutshell
