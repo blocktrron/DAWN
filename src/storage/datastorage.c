@@ -46,8 +46,6 @@ int compare_ssid(uint8_t *bssid_addr_own, uint8_t *bssid_addr_to_compare);
 
 void denied_req_array_cb(struct uloop_timeout *t);
 
-extern void clean_denied_probe_requests(time_t threshold);
-
 
 int probe_entry_last = -1;
 int client_entry_last = -1;
@@ -75,11 +73,6 @@ struct uloop_timeout ap_timeout = {
 struct uloop_timeout denied_req_timeout = {
         .cb = denied_req_array_cb
 };
-
-void denied_req_array_cb(struct uloop_timeout *t) {
-	clean_denied_probe_requests(timeout_config.denied_req_threshold);
-	uloop_timeout_set(&denied_req_timeout, timeout_config.denied_req_threshold * 1000);
-}
 
 void send_beacon_reports(uint8_t bssid[], int id) {
     pthread_mutex_lock(&client_array_mutex);
@@ -859,10 +852,6 @@ void uloop_add_data_cbs() {
     uloop_timeout_add(&probe_timeout);
     uloop_timeout_add(&client_timeout);
     uloop_timeout_add(&ap_timeout);
-
-    if (dawn_metric.use_driver_recog) {
-        uloop_timeout_add(&denied_req_timeout);
-    }
 }
 
 void remove_probe_array_cb(struct uloop_timeout *t) {

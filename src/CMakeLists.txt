@@ -11,7 +11,6 @@ SET(SOURCES
         main.c
 
         storage/datastorage.c
-        storage/denied_req_array.c
         include/datastorage.h
 
         network/networksocket.c

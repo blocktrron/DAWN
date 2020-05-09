@@ -44,7 +44,6 @@ I setup the OpenWRT Router as dumb APs.
 |eval_assoc_req     | '1'    |Evaluate the incoming association requests.|
 |deny_auth_reason   | '1'    |Status code for denying authentications.|
 |deny_assoc_reason  | '17'   |Status code for denying associations.|
-|use_driver_recog   | '1'    |Allow drivers to connect after a certain time.|
 | min_number_to_kick | '3' | How often a clients needs to be evaluated as bad before kicking. |
 | chan_util_avg_period | '3' | Channel Utilization Averaging |
 | set_hostapd_nr       | '1' | Feed Hostapd With NR-Reports |

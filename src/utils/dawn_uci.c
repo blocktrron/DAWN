@@ -74,7 +74,6 @@ struct probe_metric_s uci_get_dawn_metric() {
             ret.deny_auth_reason = uci_lookup_option_int(uci_ctx, s, "deny_auth_reason");
             ret.deny_assoc_reason = uci_lookup_option_int(uci_ctx, s, "deny_assoc_reason");
             ret.max_station_diff = uci_lookup_option_int(uci_ctx, s, "max_station_diff");
-            ret.use_driver_recog = uci_lookup_option_int(uci_ctx, s, "use_driver_recog");
             ret.min_kick_count = uci_lookup_option_int(uci_ctx, s, "min_number_to_kick");
             ret.chan_util_avg_period = uci_lookup_option_int(uci_ctx, s, "chan_util_avg_period");
             ret.set_hostapd_nr = uci_lookup_option_int(uci_ctx, s, "set_hostapd_nr");

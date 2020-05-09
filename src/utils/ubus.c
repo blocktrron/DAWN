@@ -546,18 +546,11 @@ static int handle_auth_req(struct blob_attr *msg) {
     // block if entry was not already found in probe database
     if (!(mac_is_equal(tmp.bssid_addr, auth_req.bssid_addr) && mac_is_equal(tmp.client_addr, auth_req.client_addr))) {
         printf("Deny authentication!\n");
-
-        if (dawn_metric.use_driver_recog) {
-            add_denied_probe_request(&auth_req);
-        }
         return dawn_metric.deny_auth_reason;
     }
 
     if (!decide_function(&tmp, REQ_TYPE_AUTH)) {
         printf("Deny authentication\n");
-        if (dawn_metric.use_driver_recog) {
-            add_denied_probe_request(&auth_req);
-        }
         return dawn_metric.deny_auth_reason;
     }
 
@@ -586,17 +579,11 @@ static int handle_assoc_req(struct blob_attr *msg) {
     // block if entry was not already found in probe database
     if (!(mac_is_equal(tmp.bssid_addr, auth_req.bssid_addr) && mac_is_equal(tmp.client_addr, auth_req.client_addr))) {
         printf("Deny associtation!\n");
-        if (dawn_metric.use_driver_recog) {
-            add_denied_probe_request(&auth_req);
-        }
         return dawn_metric.deny_assoc_reason;
     }
 
     if (!decide_function(&tmp, REQ_TYPE_ASSOC)) {
         printf("Deny association\n");
-        if (dawn_metric.use_driver_recog) {
-            add_denied_probe_request(&auth_req);
-        }
         return dawn_metric.deny_assoc_reason;
     }
 
@@ -1691,7 +1678,6 @@ int uci_send_via_network()
     blobmsg_add_u32(&b, "kicking", dawn_metric.kicking);
     blobmsg_add_u32(&b, "deny_auth_reason", dawn_metric.deny_auth_reason);
     blobmsg_add_u32(&b, "deny_assoc_reason", dawn_metric.deny_assoc_reason);
-    blobmsg_add_u32(&b, "use_driver_recog", dawn_metric.use_driver_recog);
     blobmsg_add_u32(&b, "min_number_to_kick", dawn_metric.min_kick_count);
     blobmsg_add_u32(&b, "chan_util_avg_period", dawn_metric.chan_util_avg_period);
     blobmsg_add_u32(&b, "set_hostapd_nr", dawn_metric.set_hostapd_nr);
@@ -1747,7 +1733,6 @@ enum {
     UCI_KICKING,
     UCI_DENY_AUTH_REASON,
     UCI_DENY_ASSOC_REASON,
-    UCI_USE_DRIVER_RECOG,
     UCI_MIN_NUMBER_TO_KICK,
     UCI_CHAN_UTIL_AVG_PERIOD,
     UCI_SET_HOSTAPD_NR,
@@ -1800,7 +1785,6 @@ static const struct blobmsg_policy uci_metric_policy[__UCI_METIC_MAX] = {
         [UCI_KICKING] = {.name = "kicking", .type = BLOBMSG_TYPE_INT32},
         [UCI_DENY_AUTH_REASON] = {.name = "deny_auth_reason", .type = BLOBMSG_TYPE_INT32},
         [UCI_DENY_ASSOC_REASON] = {.name = "deny_assoc_reason", .type = BLOBMSG_TYPE_INT32},
-        [UCI_USE_DRIVER_RECOG] = {.name = "use_driver_recog", .type = BLOBMSG_TYPE_INT32},
         [UCI_MIN_NUMBER_TO_KICK] = {.name = "min_number_to_kick", .type = BLOBMSG_TYPE_INT32},
         [UCI_CHAN_UTIL_AVG_PERIOD] = {.name = "chan_util_avg_period", .type = BLOBMSG_TYPE_INT32},
         [UCI_SET_HOSTAPD_NR] = {.name = "set_hostapd_nr", .type = BLOBMSG_TYPE_INT32},
@@ -1898,9 +1882,6 @@ int handle_uci_config(struct blob_attr *msg) {
     uci_set_network(cmd_buffer);
 
     sprintf(cmd_buffer, "dawn.@metric[0].deny_assoc_reason=%d", blobmsg_get_u32(tb_metric[UCI_DENY_ASSOC_REASON]));
-    uci_set_network(cmd_buffer);
-
-    sprintf(cmd_buffer, "dawn.@metric[0].use_driver_recog=%d", blobmsg_get_u32(tb_metric[UCI_USE_DRIVER_RECOG]));
     uci_set_network(cmd_buffer);
 
     sprintf(cmd_buffer, "dawn.@metric[0].min_number_to_kick=%d", blobmsg_get_u32(tb_metric[UCI_MIN_NUMBER_TO_KICK]));

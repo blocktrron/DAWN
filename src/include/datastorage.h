@@ -59,7 +59,6 @@ struct probe_metric_s {
     int eval_assoc_req;
     int deny_auth_reason;
     int deny_assoc_reason;
-    int use_driver_recog;
     int min_kick_count;
     int chan_util_avg_period;
     int set_hostapd_nr;
@@ -143,19 +142,6 @@ typedef struct auth_entry_s assoc_entry;
 #define DENY_REQ_ARRAY_LEN 100
 struct auth_entry_s denied_req_array[DENY_REQ_ARRAY_LEN];
 pthread_mutex_t denied_array_mutex;
-
-auth_entry insert_to_denied_req_array(auth_entry entry, int inc_counter);
-
-/* List structs */
-
-struct denied_list {
-    auth_entry *ptr;
-    size_t len;
-    size_t size;
-    pthread_mutex_t array_mutex;
-};
-
-void add_denied_probe_request(auth_entry *entry);
 
 // ---------------- Defines ----------------
 #define PROBE_ARRAY_LEN 1000
