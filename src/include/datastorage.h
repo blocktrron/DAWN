@@ -122,6 +122,15 @@ typedef struct probe_entry_s {
     uint32_t rsni;
 } probe_entry;
 
+struct beacon_report_s {
+    uint8_t bssid[ETH_ALEN];
+    uint8_t sta[ETH_ALEN];
+    uint32_t freq;
+    time_t time;
+    uint32_t rcpi;
+    uint32_t rsni;
+};
+
 typedef struct auth_entry_s {
     uint8_t bssid_addr[ETH_ALEN];
     uint8_t client_addr[ETH_ALEN];
@@ -169,11 +178,14 @@ void uloop_add_data_cbs();
 // blobmsg_alloc_string_buffer(&b, "signature", 1024);
 #define SIGNATURE_LEN 1024
 
+#define CLIENT_NUM_BEACON_REPORTS 10;
+
 // ---------------- Structs ----------------
 typedef struct client_s {
     uint8_t bssid_addr[ETH_ALEN];
     uint8_t client_addr[ETH_ALEN];
     char signature[SIGNATURE_LEN];
+    struct beacon_report_s beacon_reports[CLIENT_NUM_BEACON_REPORTS];
     uint8_t ht_supported;
     uint8_t vht_supported;
     uint32_t freq;
