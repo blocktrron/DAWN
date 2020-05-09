@@ -325,7 +325,7 @@ bool subscriber_to_interface(const char *ifname);
 
 bool subscribe(struct hostapd_sock_entry *hostapd_entry);
 
-int parse_to_beacon_rep(struct blob_attr *msg, probe_entry *beacon_rep);
+int parse_to_beacon_report(struct blob_attr *msg, struct beacon_report_s *beacon_rep);
 
 void ubus_set_nr();
 
@@ -468,7 +468,7 @@ int parse_to_probe_req(struct blob_attr *msg, probe_entry *prob_req) {
     return 0;
 }
 
-int parse_to_beacon_rep(struct blob_attr *msg, probe_entry *beacon_rep) {
+int parse_to_beacon_report(struct blob_attr *msg, struct beacon_report_s *beacon_rep) {
     struct blob_attr *tb[__BEACON_REP_MAX];
 
     blobmsg_parse(beacon_rep_policy, __BEACON_REP_MAX, tb, blob_data(msg), blob_len(msg));
@@ -478,50 +478,15 @@ int parse_to_beacon_rep(struct blob_attr *msg, probe_entry *beacon_rep) {
         return -1;
     }
 
-    if (hwaddr_aton(blobmsg_data(tb[BEACON_REP_BSSID]), beacon_rep->bssid_addr))
+    if (hwaddr_aton(blobmsg_data(tb[BEACON_REP_ADDR]), beacon_rep->sta))
         return UBUS_STATUS_INVALID_ARGUMENT;
 
-    ap check_null = {.bssid_addr = {0, 0, 0, 0, 0, 0}};
-    if(mac_is_equal(check_null.bssid_addr,beacon_rep->bssid_addr))
-    {
-        fprintf(stderr, "Received NULL MAC! Client is strange!\n");
-        return -1;
-    }
-
-    ap ap_entry_rep = ap_array_get_ap(beacon_rep->bssid_addr);
-
-    // no client from network!!
-    if (!mac_is_equal(ap_entry_rep.bssid_addr, beacon_rep->bssid_addr)) {
-        return -1; //TODO: Check this
-    }
-
-    if (hwaddr_aton(blobmsg_data(tb[BEACON_REP_ADDR]), beacon_rep->client_addr))
+    if (hwaddr_aton(blobmsg_data(tb[BEACON_REP_BSSID]), beacon_rep->bssid))
         return UBUS_STATUS_INVALID_ARGUMENT;
 
-    int rcpi = 0;
-    int rsni = 0;
-    rcpi = blobmsg_get_u16(tb[BEACON_REP_RCPI]);
-    rsni = blobmsg_get_u16(tb[BEACON_REP_RSNI]);
+    beacon_rep->rcpi = blobmsg_get_u16(tb[BEACON_REP_RCPI]);
+    beacon_rep->rsni = blobmsg_get_u16(tb[BEACON_REP_RSNI]);
 
-
-    // HACKY WORKAROUND!
-    printf("Try update RCPI and RSNI for beacon report!\n");
-    if(!probe_array_update_rcpi_rsni(beacon_rep->bssid_addr, beacon_rep->client_addr, rcpi, rsni, true))
-    {
-        printf("Beacon: No Probe Entry Existing!\n");
-        beacon_rep->counter = dawn_metric.min_probe_count;
-        hwaddr_aton(blobmsg_data(tb[PROB_BSSID_ADDR]), beacon_rep->target_addr);
-        beacon_rep->signal = 0;
-        beacon_rep->freq = ap_entry_rep.freq;
-        beacon_rep->rcpi = rcpi;
-        beacon_rep->rsni = rsni;
-
-        beacon_rep->ht_capabilities = false; // that is very problematic!!!
-        beacon_rep->vht_capabilities = false; // that is very problematic!!!
-        printf("Inserting to array!\n");
-        insert_to_array(*beacon_rep, false, false, true);
-        ubus_send_probe_via_network(*beacon_rep);
-    }
     return 0;
 }
 
@@ -608,13 +573,17 @@ static int handle_probe_req(struct blob_attr *msg) {
 }
 
 static int handle_beacon_rep(struct blob_attr *msg) {
-    probe_entry beacon_rep;
+    struct beacon_report_s beacon_report;
 
-    if (parse_to_beacon_rep(msg, &beacon_rep) == 0) {
+    if (parse_to_beacon_rep(msg, &beacon_report) == 0) {
         printf("Inserting beacon Report!\n");
-        // insert_to_array(beacon_rep, 1);
-        printf("Sending via network!\n");
-        // send_blob_attr_via_network(msg, "beacon-report");
+
+        /* Check if beacon report is for an AP we know of */
+        ap access_point = ap_array_get_ap(beacon_report->bssid);
+        if (mac_is_null(access_point.bssid_addr))
+            return 0;
+
+        /* ToDo: add client */
     }
     return 0;
 }
